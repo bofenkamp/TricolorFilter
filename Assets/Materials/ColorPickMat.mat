@@ -60,7 +60,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Floats:
-    - _Bottom: 355.75
+    - _Bottom: 168.25003
     - _BumpScale: 1
     - _ColorMask: 15
     - _Cutoff: 0.5
@@ -71,7 +71,7 @@ Material:
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _Left: 63.75
+    - _Left: -123.74997
     - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1
@@ -85,7 +85,7 @@ Material:
     - _StencilOp: 0
     - _StencilReadMask: 255
     - _StencilWriteMask: 255
-    - _ThirdVal: 0
+    - _ThirdVal: 0.49144387
     - _TimeDamper: 20
     - _Top: 655.75
     - _UVSec: 0

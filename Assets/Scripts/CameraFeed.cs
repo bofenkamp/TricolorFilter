@@ -9,7 +9,7 @@ public class CameraFeed : MonoBehaviour
     void Start()
     {
         WebCamDevice[] devices = WebCamTexture.devices;
-        string webcamName = devices[0].name;
+        string webcamName = devices[devices.Length - 1].name;
         MeshRenderer renderer = GetComponent<MeshRenderer>();
         camTex = new WebCamTexture(webcamName);
         renderer.material.mainTexture = camTex;
