@@ -19,6 +19,9 @@ public class ColorPickFeedback : MonoBehaviour
     private RectTransform rt;
     private RectTransform slider;
     [SerializeField] private GameObject[] colorButtons;
+    [SerializeField] private RectTransform markerRT;
+    [SerializeField] private GameObject[] allMarkers;
+    private Image markerImg;
 
     //filter
     [SerializeField] private Material mainFilter;
@@ -32,6 +35,7 @@ public class ColorPickFeedback : MonoBehaviour
         mat = GetComponent<Image>().material;
         slider = transform.GetChild(0).GetComponent<RectTransform>();
         sliderVal = slider.GetComponent<Slider>().value;
+        markerImg = markerRT.GetComponent<Image>();
     }
 
     void Update()
@@ -68,7 +72,8 @@ public class ColorPickFeedback : MonoBehaviour
         {
             float x = (selectionPoint.Value.x - left) / (right - left);
             float y = (selectionPoint.Value.y - bottom) / (top - bottom);
-            ChangeColor(x, y, sliderVal);
+            ChangeColor(x, sliderVal, y);
+            markerRT.position = selectionPoint.Value + screenCenter;
         }
         else
         {
@@ -130,10 +135,11 @@ public class ColorPickFeedback : MonoBehaviour
         return left <= pos.x && pos.x <= right && bottom <= pos.y && pos.y <= top;
     }
 
-    void ChangeColor(float x, float y, float z)
+    void ChangeColor(float h, float s, float l)
     {
-        Color newColor = Color.HSVToRGB(x, z, y);
+        Color newColor = Color.HSVToRGB(h, s, l);
         mainFilter.SetColor(affectedColor, newColor);
+        markerImg.color = newColor;
     }
 
     bool ShouldCloseUI(Vector2 pos)
@@ -162,6 +168,10 @@ public class ColorPickFeedback : MonoBehaviour
         foreach (GameObject obj in colorButtons)
         {
             obj.SetActive(true);
+        }
+        foreach (GameObject obj in allMarkers)
+        {
+            obj.SetActive(false);
         }
         gameObject.SetActive(false);
     }

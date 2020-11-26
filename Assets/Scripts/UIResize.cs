@@ -5,16 +5,23 @@ using UnityEngine.UI;
 
 public class UIResize : MonoBehaviour
 {
+    //values
     [SerializeField] private float size = 0.4f;
     [SerializeField] private float margin = 10f;
     private float goldenRatio = 1.618034f;
     [SerializeField] private float sliderRatio = 0.1f;
+    [SerializeField] private float markerRatio = .1167f;
 
+    //UI elements
     private RectTransform canvas;
     [SerializeField] private RectTransform[] colorPickers;
     [SerializeField] private RectTransform[] sliders;
     [SerializeField] private RectTransform[] sliderKnobs;
     [SerializeField] private RectTransform[] colorButtons;
+    [SerializeField] private RectTransform[] markers;
+
+    //shader-related
+    [SerializeField] private Material filterMat;
 
     // Start is called before the first frame update
     void Start()
@@ -26,11 +33,13 @@ public class UIResize : MonoBehaviour
         float sliderPos = -colorPickerSize - margin - sliderWidth / 2f;
         float colorButtonHeight = (colorPickerSize - (colorButtons.Length - 1) * margin) / colorButtons.Length;
         float colorButtonWidth = colorButtonHeight * goldenRatio;
+        float markerSize = colorPickerSize * markerRatio;
 
         SetColorPickerSize(colorPickerSize);
         SetSliderSize(colorPickerSize, sliderWidth, sliderPos);
         SetKnobSize(sliderWidth);
         SetColorButtonSize(colorButtonHeight, colorButtonWidth);
+        SetMarkerPositions(markerSize, colorPickerSize);
     }
 
     void SetColorPickerSize(float len)
@@ -67,6 +76,29 @@ public class UIResize : MonoBehaviour
             rt.sizeDelta = new Vector2(w, h);
             rt.position = new Vector3(canvas.sizeDelta.x - margin, currY, 0);
             currY -= (h + margin);
+        }
+    }
+
+    void SetMarkerPositions(float size, float colorPickerSize)
+    {
+        float top = canvas.sizeDelta.y - margin;
+        float bottom = top - colorPickerSize;
+        float right = canvas.sizeDelta.x - margin;
+        float left = right - colorPickerSize;
+
+        for (int i = 0; i < markers.Length; i++)
+        {
+            RectTransform mark = markers[i];
+            mark.sizeDelta = Vector2.one * size;
+            Color color = filterMat.GetColor("_Color" + (i + 1).ToString());
+            mark.GetComponent<Image>().color = color;
+            float h;
+            float s;
+            float l;
+            Color.RGBToHSV(color, out h, out s, out l);
+            float x = left + (h * colorPickerSize);
+            float y = bottom + (l * colorPickerSize);
+            mark.position = new Vector3(x, y, 0);
         }
     }
 }

@@ -85,7 +85,7 @@ Material:
     - _StencilOp: 0
     - _StencilReadMask: 255
     - _StencilWriteMask: 255
-    - _ThirdVal: 0.49144387
+    - _ThirdVal: 0.5
     - _TimeDamper: 20
     - _Top: 655.75
     - _UVSec: 0
