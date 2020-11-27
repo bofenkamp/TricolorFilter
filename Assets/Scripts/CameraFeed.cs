@@ -15,13 +15,43 @@ public class CameraFeed : MonoBehaviour
 #elif (UNITY_IOS || UNITY_ANDROID)
         camID = devices.Length - 1;
 #endif
-        Debug.Log($"{devices.Length} webcams found");
-        Debug.Log(devices[camID].name);
+        StartCamera();
+    }
+
+    void StartCamera()
+    {
+        WebCamDevice[] devices = WebCamTexture.devices;
         string webcamName = devices[camID].name;
         MeshRenderer renderer = GetComponent<MeshRenderer>();
         camTex = new WebCamTexture(webcamName);
         renderer.material.mainTexture = camTex;
-        camTex.Play();
+        try
+        {
+            camTex.Play();
+        }
+        catch
+        {
+            FlipCamera();
+        }
+    }
+
+    public void FlipCamera()
+    {
+        WebCamDevice[] devices = WebCamTexture.devices;
+        camID++;
+        if (camID >= devices.Length)
+        {
+            camID = 0;
+        }
+
+#if (UNITY_IOS || UNITY_ANDROID)
+
+        float quadRot = (transform.eulerAngles.y + 180) % 360;
+        transform.eulerAngles = new Vector3(transform.eulerAngles.x, quadRot, transform.eulerAngles.z);
+
+#endif
+
+        StartCamera();
     }
 
     void OnDestroy()

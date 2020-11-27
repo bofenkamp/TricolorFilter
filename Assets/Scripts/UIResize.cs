@@ -19,6 +19,7 @@ public class UIResize : MonoBehaviour
     [SerializeField] private RectTransform[] sliderKnobs;
     [SerializeField] private RectTransform[] colorButtons;
     [SerializeField] private RectTransform[] markers;
+    [SerializeField] private RectTransform flipCamButton;
 
     //shader-related
     [SerializeField] private Material filterMat;
@@ -34,12 +35,14 @@ public class UIResize : MonoBehaviour
         float colorButtonHeight = (colorPickerSize - (colorButtons.Length - 1) * margin) / colorButtons.Length;
         float colorButtonWidth = colorButtonHeight * goldenRatio;
         float markerSize = colorPickerSize * markerRatio;
+        float flipButtonLen = colorButtonHeight * (flipCamButton.sizeDelta.x / flipCamButton.sizeDelta.y);
 
         SetColorPickerSize(colorPickerSize);
         SetSliderSize(colorPickerSize, sliderWidth, sliderPos);
         SetKnobSize(sliderWidth);
         SetColorButtonSize(colorButtonHeight, colorButtonWidth);
         SetMarkerPositions(markerSize, colorPickerSize);
+        SetCamFlipButtonSize(flipButtonLen, colorButtonHeight, colorPickerSize);
     }
 
     void SetColorPickerSize(float len)
@@ -100,5 +103,12 @@ public class UIResize : MonoBehaviour
             float y = bottom + (l * colorPickerSize);
             mark.position = new Vector3(x, y, 0);
         }
+    }
+
+    void SetCamFlipButtonSize(float l, float h, float colorPickerSize)
+    {
+        flipCamButton.sizeDelta = new Vector2(l, h);
+        flipCamButton.position = new Vector3(canvas.sizeDelta.x - margin,
+            canvas.sizeDelta.y - 2 * margin - colorPickerSize);
     }
 }
