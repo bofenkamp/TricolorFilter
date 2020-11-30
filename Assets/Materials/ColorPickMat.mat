@@ -71,12 +71,12 @@ Material:
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _Left: -123.74997
+    - _Left: -363.75
     - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
-    - _Right: 363.75
+    - _Right: 123.74997
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
@@ -85,7 +85,7 @@ Material:
     - _StencilOp: 0
     - _StencilReadMask: 255
     - _StencilWriteMask: 255
-    - _ThirdVal: 0.5
+    - _ThirdVal: 1
     - _TimeDamper: 20
     - _Top: 655.75
     - _UVSec: 0

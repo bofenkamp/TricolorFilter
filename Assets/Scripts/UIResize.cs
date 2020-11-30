@@ -20,6 +20,8 @@ public class UIResize : MonoBehaviour
     [SerializeField] private RectTransform[] colorButtons;
     [SerializeField] private RectTransform[] markers;
     [SerializeField] private RectTransform flipCamButton;
+    [SerializeField] private RectTransform hideButton;
+    [SerializeField] private RectTransform showButton;
 
     //shader-related
     [SerializeField] private Material filterMat;
@@ -31,18 +33,20 @@ public class UIResize : MonoBehaviour
         margin *= Mathf.Min(canvas.sizeDelta.x, canvas.sizeDelta.y);
         float colorPickerSize = Mathf.Min(canvas.sizeDelta.x, canvas.sizeDelta.y) * size;
         float sliderWidth = Mathf.Clamp(colorPickerSize * sliderRatio, 20, canvas.sizeDelta.x);
-        float sliderPos = -colorPickerSize - margin - sliderWidth / 2f;
+        float sliderPos = colorPickerSize + margin + sliderWidth / 2f;
         float colorButtonHeight = (colorPickerSize - (colorButtons.Length - 1) * margin) / colorButtons.Length;
         float colorButtonWidth = colorButtonHeight * goldenRatio;
         float markerSize = colorPickerSize * markerRatio;
         float flipButtonLen = colorButtonHeight * (flipCamButton.sizeDelta.x / flipCamButton.sizeDelta.y);
+        float camBottom;
 
         SetColorPickerSize(colorPickerSize);
         SetSliderSize(colorPickerSize, sliderWidth, sliderPos);
         SetKnobSize(sliderWidth);
         SetColorButtonSize(colorButtonHeight, colorButtonWidth);
         SetMarkerPositions(markerSize, colorPickerSize);
-        SetCamFlipButtonSize(flipButtonLen, colorButtonHeight, colorPickerSize);
+        SetCamFlipButtonSize(flipButtonLen, colorButtonHeight, colorPickerSize, out camBottom);
+        SetHideAndShow(camBottom);
     }
 
     void SetColorPickerSize(float len)
@@ -50,7 +54,7 @@ public class UIResize : MonoBehaviour
         foreach (RectTransform rt in colorPickers)
         {
             rt.sizeDelta = Vector2.one * len;
-            rt.position = new Vector3(canvas.sizeDelta.x - margin, canvas.sizeDelta.y - margin);
+            rt.position = new Vector3(margin, canvas.sizeDelta.y - margin);
         }
     }
 
@@ -77,7 +81,7 @@ public class UIResize : MonoBehaviour
         foreach (RectTransform rt in colorButtons)
         {
             rt.sizeDelta = new Vector2(w, h);
-            rt.position = new Vector3(canvas.sizeDelta.x - margin, currY, 0);
+            rt.position = new Vector3(margin, currY, 0);
             currY -= (h + margin);
         }
     }
@@ -86,8 +90,8 @@ public class UIResize : MonoBehaviour
     {
         float top = canvas.sizeDelta.y - margin;
         float bottom = top - colorPickerSize;
-        float right = canvas.sizeDelta.x - margin;
-        float left = right - colorPickerSize;
+        float left = margin;
+        float right = left + colorPickerSize;
 
         for (int i = 0; i < markers.Length; i++)
         {
@@ -105,10 +109,17 @@ public class UIResize : MonoBehaviour
         }
     }
 
-    void SetCamFlipButtonSize(float l, float h, float colorPickerSize)
+    void SetCamFlipButtonSize(float l, float h, float colorPickerSize, out float camBottom)
     {
         flipCamButton.sizeDelta = new Vector2(l, h);
-        flipCamButton.position = new Vector3(canvas.sizeDelta.x - margin,
+        flipCamButton.position = new Vector3(margin,
             canvas.sizeDelta.y - 2 * margin - colorPickerSize);
+        camBottom = flipCamButton.position.y - flipCamButton.sizeDelta.y;
+    }
+
+    void SetHideAndShow(float camBottom)
+    {
+        hideButton.position = new Vector3(margin, camBottom - margin);
+        showButton.position = new Vector3(margin, canvas.sizeDelta.y - margin);
     }
 }
