@@ -197,72 +197,227 @@ public class ColorPickFeedback : MonoBehaviour
 
     void ChangeColor(float h, float s, float l)
     {
-        Color newColor = Color.HSVToRGB(h, s, l);
-        mainFilter.SetColor(affectedColor, newColor);
         if (!markerImg)
         {
             markerImg = markerRT.GetComponent<Image>();
         }
-        markerImg.color = newColor;
         SetMarkerPos(new Vector3(left + h * (right - left), bottom + l * (top - bottom), 0) + screenCenter);
+
+        //adjust to snap
+        h = (markerRT.position.x - screenCenter.x - left) / (right - left);
+        s = sliderVal;
+        l = (markerRT.position.y - screenCenter.y - bottom) / (top - bottom);
+        Color newColor = Color.HSVToRGB(h, s, l);
+        mainFilter.SetColor(affectedColor, newColor);
+        markerImg.color = newColor;
     }
 
-    void SetMarkerPos(Vector3 defaultPos)
+    void SetMarkerPos(Vector3 defaultPos) //automatically snaps if possible
     {
-        Vector3? newPos;
+        if (CanSnapToOtherMarkers(defaultPos))
+            return;
+        else if (CanSnapToMidpointBetweenMarkers(defaultPos))
+            return;
+        else if (CanSnapToIntersectionsOfTrendlineAndHueLumLines(defaultPos))
+            return;
+        else if (CanSnapToLineBetweenMarkers(defaultPos))
+            return;
+        else if (CanSnapToHueLumIntersection(defaultPos))
+            return;
+        else if (CanSnapToComplimentaryHue(defaultPos))
+            return;
+        else if (CanSnapToComplimentaryLum(defaultPos))
+            return;
+        else
+            markerRT.position = defaultPos;
+    }
 
-        //try to snap to position of other marker
+    bool CanSnapToOtherMarkers(Vector3 defaultPos)
+    {
         List<Vector3> eligibleSnaps = new List<Vector3>();
-        foreach (GameObject obj in otherMarkers)
+        return GetBestPosInList(eligibleSnaps, defaultPos);
+    }
+
+    bool CanSnapToMidpointBetweenMarkers(Vector3 defaultPos)
+    {
+        List<Vector3> eligiblePoses = new List<Vector3>();
+        for (int i = 0; i < otherMarkers.Length - 1; i++)
         {
-            newPos = TrySnapToPosition(obj.transform.position, defaultPos);
-            if (newPos.HasValue)
-                eligibleSnaps.Add(newPos.Value);
+            for (int j = i + 1; j < otherMarkers.Length; j++)
+            {
+                eligiblePoses.Add(0.5f * (otherMarkers[i].transform.position + otherMarkers[j].transform.position));
+                //make otherMarkers[1] the midpoint
+                eligiblePoses.Add((otherMarkers[1].transform.position - otherMarkers[0].transform.position) + otherMarkers[1].transform.position);
+                //make otherMarkers[2] the midpoint
+                eligiblePoses.Add((otherMarkers[0].transform.position - otherMarkers[1].transform.position) + otherMarkers[0].transform.position);
+            }
         }
 
-        if (eligibleSnaps.Count > 1)
+        return GetBestPosInList(eligiblePoses, defaultPos);
+    }
+
+    bool CanSnapToIntersectionsOfTrendlineAndHueLumLines(Vector3 defaultPos)
+    {
+        List<float> complimentaryHues = GetComplimentaryHues();
+        List<float> complimentaryLums = GetComplimentaryLums();
+        List<Vector3> pointsToTest = new List<Vector3>();
+        (Vector3, Vector3) trendLine = (otherMarkers[0].transform.position, otherMarkers[1].transform.position);
+
+        foreach (float hue in complimentaryHues)
         {
-            markerRT.position = GetClosestPosition(eligibleSnaps, defaultPos);
-            return;
+            Vector3? intersect = GetPointOnLineWithXValue(left + hue * (right - left) + screenCenter.x,
+                trendLine.Item1, trendLine.Item2);
+            if (intersect.HasValue && IsPointWithinBox(intersect.Value))
+                pointsToTest.Add(intersect.Value);
         }
-        else if (eligibleSnaps.Count == 1)
+        foreach (float lum in complimentaryLums)
         {
-            markerRT.position = eligibleSnaps[0];
-            return;
+            Vector3? intersect = GetPointOnLineWithYValue(bottom + lum * (top - bottom) + screenCenter.y,
+                trendLine.Item1, trendLine.Item2);
+            if (intersect.HasValue && IsPointWithinBox(intersect.Value))
+                pointsToTest.Add(intersect.Value);
         }
 
+        return GetBestPosInList(pointsToTest, defaultPos);
+    }
+
+    bool CanSnapToLineBetweenMarkers(Vector3 defaultPos)
+    {
         //try to snap to position of line between markers
         List<(Vector3, Vector3)> eligibleLines = new List<(Vector3, Vector3)>();
-        (Vector3, Vector3)? newLine;
         for (int i = 0; i < otherMarkers.Length - 1; i++)
         {
             for (int j = i + i; j < otherMarkers.Length; j++)
             {
-                newLine = TrySnapToLine(defaultPos, 
-                    otherMarkers[i].transform.position, otherMarkers[j].transform.position);
-                if (newLine.HasValue)
-                {
-                    eligibleLines.Add(newLine.Value);
-                }
+                eligibleLines.Add((otherMarkers[i].transform.position, 
+                    otherMarkers[j].transform.position));
             }
         }
 
+        return GetBestLineInList(eligibleLines, defaultPos);
+    }
+
+    bool CanSnapToHueLumIntersection(Vector3 defaultPos)
+    {
+        List<float> complimentaryHues = GetComplimentaryHues();
+        List<float> complimentaryLums = GetComplimentaryLums();
+        List<Vector3> pointsToTest = new List<Vector3>();
+
+        foreach (float hue in complimentaryHues)
+        {
+            float x = left + hue * (right - left) + screenCenter.x;
+            foreach (float lum in complimentaryLums)
+            {
+                float y = bottom + lum * (top - bottom) + screenCenter.y;
+                pointsToTest.Add(new Vector3(x, y, 0));
+            }
+        }
+
+        Vector3? newPos;
+        List<Vector3> eligiblePoses = new List<Vector3>();
+        foreach (Vector3 point in pointsToTest)
+        {
+            newPos = TrySnapToPosition(point, defaultPos);
+            if (newPos.HasValue)
+            {
+                eligiblePoses.Add(newPos.Value);
+            }
+        }
+
+        if (eligiblePoses.Count > 0)
+        {
+            markerRT.position = GetClosestPosition(eligiblePoses, defaultPos);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    bool CanSnapToComplimentaryHue(Vector3 defaultPos)
+    {
+        List<float> complimentaryHues = GetComplimentaryHues();
+        List<(Vector3, Vector3)> eligibleLines = new List<(Vector3, Vector3)>();
+
+        foreach (float hue in complimentaryHues)
+        {
+            float x = left + hue * (right - left) + screenCenter.x;
+            Vector3 p1 = new Vector3(x, 0, 0);
+            Vector3 p2 = new Vector3(x, 1, 0);
+            eligibleLines.Add((p1, p2));
+        }
+
+        return GetBestLineInList(eligibleLines, defaultPos);
+    }
+
+    bool CanSnapToComplimentaryLum(Vector3 defaultPos)
+    {
+        List<float> complimentaryLums = GetComplimentaryLums();
+        List<(Vector3, Vector3)> eligibleLines = new List<(Vector3, Vector3)>();
+
+        foreach (float lum in complimentaryLums)
+        {
+            float y = bottom + lum * (top - bottom) + screenCenter.y;
+            Vector3 p1 = new Vector3(0, y, 0);
+            Vector3 p2 = new Vector3(1, y, 0);
+            eligibleLines.Add((p1, p2));
+        }
+
+        return GetBestLineInList(eligibleLines, defaultPos);
+    }
+
+    bool GetBestPosInList(List<Vector3> positions, Vector3 defaultPos)
+    {
+        Vector3? newPos;
+        List<Vector3> eligiblePoses = new List<Vector3>();
+
+        foreach (Vector3 pos in positions)
+        {
+            if (!IsPointWithinBox(pos))
+            {
+                continue;
+            }
+            newPos = TrySnapToPosition(pos, defaultPos);
+            if (newPos.HasValue)
+            {
+                eligiblePoses.Add(newPos.Value);
+            }
+        }
+
+        if (eligiblePoses.Count > 0)
+        {
+            markerRT.position = GetClosestPosition(eligiblePoses, defaultPos);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    bool GetBestLineInList(List<(Vector3, Vector3)> lines, Vector3 defaultPos)
+    {
+        (Vector3, Vector3)? newLine;
+        List<(Vector3, Vector3)> eligibleLines = new List<(Vector3, Vector3)>();
+        foreach ((Vector3, Vector3) line in lines)
+        {
+            newLine = TrySnapToLine(defaultPos, line.Item1, line.Item2);
+            if (newLine.HasValue)
+            {
+                eligibleLines.Add(newLine.Value);
+            }
+        }
         if (eligibleLines.Count > 0)
         {
-            (Vector3, Vector3) closestLine;
-            if (eligibleLines.Count > 1)
-            {
-                closestLine = GetClosestLine(eligibleLines, defaultPos);
-            }
-            else
-            {
-                closestLine = eligibleLines[0];
-            }
+            (Vector3, Vector3) closestLine = GetClosestLine(eligibleLines, defaultPos);
             markerRT.position = GetClosestPointOnLine(defaultPos, closestLine.Item1, closestLine.Item2);
-            return;
+            return true;
         }
-
-        markerRT.position = defaultPos;
+        else
+        {
+            return false;
+        }
     }
 
     Vector3? TrySnapToPosition(Vector3 target, Vector3 curr)
@@ -275,6 +430,9 @@ public class ColorPickFeedback : MonoBehaviour
 
     Vector3 GetClosestPosition(List<Vector3> positions, Vector3 pos)
     {
+        if (positions.Count == 1)
+            return positions[0];
+
         Vector3 closestPos = positions[0];
         float smallestDist = Vector3.Distance(positions[0], pos);
         for (int i = 1; i < positions.Count; i++)
@@ -317,18 +475,18 @@ public class ColorPickFeedback : MonoBehaviour
         }
         else
         {
-            //Debug.Log($"GETTING LINE DIST: p0 = {p0}, line = {p1} -> {p2}");
             float num = Mathf.Abs((p2.y - p1.y) * p0.x - (p2.x - p1.x) * p0.y + p2.x * p1.y - p2.y * p1.x);
             float den = Mathf.Sqrt(Mathf.Pow(p2.y - p1.y, 2) + Mathf.Pow(p2.x - p1.x, 2));
-            //Debug.Log($"d = {num / den}");
             d = num / den;
         }
-        Debug.Log(p0 - screenCenter);
         return d;
     }
 
     (Vector3, Vector3) GetClosestLine(List<(Vector3, Vector3)> lines, Vector3 pos)
     {
+        if (lines.Count == 1)
+            return lines[0];
+
         (Vector3, Vector3) closestLine = lines[0];
         float closestDist = GetDistFromLine(pos, closestLine.Item1, closestLine.Item2);
         for (int i = 1; i < lines.Count; i++)
@@ -352,16 +510,16 @@ public class ColorPickFeedback : MonoBehaviour
             {
                 p = p1;
             }
-            else //horizontal line
+            else //vertical line
             {
-                p = new Vector3(p0.x, p1.y, 0);
+                p = new Vector3(p1.x, p0.y, 0);
             }
         }
         else
         {
-            if (p1.y == p2.y) //vertical line
+            if (p1.y == p2.y) //horizontal line
             {
-                p = new Vector3(p1.x, p0.y, 0);
+                p = new Vector3(p0.x, p1.y, 0);
             }
             else //diagonal line
             {
@@ -382,57 +540,55 @@ public class ColorPickFeedback : MonoBehaviour
 
     Vector3 GetClosestPointWithinBox(Vector3 p0, Vector3 p1, Vector3 p2)
     {
-        Vector3 p;
-        Debug.Log($"{p0} not within box");
+        Vector3? p;
         if (p0.x - screenCenter.x < left) //too far left
         {
-            Debug.Log("point too far left");
             p = GetPointOnLineWithXValue(left + screenCenter.x + 1, p1, p2);
-            Debug.Log($"readjusted to {p}");
-            if (IsPointWithinBox(p))
-                return p;
+            if (p.HasValue && IsPointWithinBox(p.Value))
+                return p.Value;
         }
         else if (p0.x - screenCenter.x > right) //too far right
         {
-            Debug.Log("point too far right");
             p = GetPointOnLineWithXValue(right + screenCenter.x - 1, p1, p2);
-            Debug.Log($"readjusted to {p}");
-            if (IsPointWithinBox(p))
-                return p;
+            if (p.HasValue && IsPointWithinBox(p.Value))
+                return p.Value;
         }
         if (p0.y - screenCenter.y < bottom) //too far down
         {
-            Debug.Log("point too far down");
             p = GetPointOnLineWithYValue(bottom + screenCenter.y + 1, p1, p2);
-            Debug.Log($"readjusted to {p}");
-            if (IsPointWithinBox(p))
-                return p;
+            if (p.HasValue && IsPointWithinBox(p.Value))
+                return p.Value;
         }
         else if (p0.y - screenCenter.y > top) //too far up
         { 
-            Debug.Log("point too far up");
             p = GetPointOnLineWithYValue(top + screenCenter.y - 1, p1, p2);
-            Debug.Log($"readjusted to {p}");
-            if (IsPointWithinBox(p))
-                return p;
-        }
-        if(!IsPointWithinBox(p0))
-        {
-            Debug.Log($"Point {p0} still not in box");
+            if (p.HasValue && IsPointWithinBox(p.Value))
+                return p.Value;
         }
         return p0;
     }
 
-    Vector3 GetPointOnLineWithXValue(float x, Vector3 p1, Vector3 p2)
+    Vector3? GetPointOnLineWithXValue(float x, Vector3 p1, Vector3 p2)
     {
-        float m = (p2.y - p1.y) / (p2.x - p1.x);
-        float b = p1.y - m * p1.x;
-        float y = m * x + b;
-        return new Vector3(x, y, 0);
+        if (p1.x == p2.x) //vertical, no solution or infinite solutions
+            return null;
+        else if (p1.y == p2.y) //horizontal
+            return new Vector3(x, p1.y, 0);
+        else
+        {
+            float m = (p2.y - p1.y) / (p2.x - p1.x);
+            float b = p1.y - m * p1.x;
+            float y = m * x + b;
+            return new Vector3(x, y, 0);
+        }
     }
 
-    Vector3 GetPointOnLineWithYValue(float y, Vector3 p1, Vector3 p2)
+    Vector3? GetPointOnLineWithYValue(float y, Vector3 p1, Vector3 p2)
     {
+        if (p1.y == p2.y) //horizontal, no solution or infinite solutions
+            return null;
+        else if (p1.x == p2.x) //vertical
+            return new Vector3(p1.x, y, 0);
         float m = (p2.y - p1.y) / (p2.x - p1.x);
         float b = p1.y - m * p1.x;
         float x = (y - b) / m;
@@ -443,6 +599,80 @@ public class ColorPickFeedback : MonoBehaviour
     {
         p -= screenCenter;
         return left <= p.x && p.x <= right && bottom <= p.y && p.y <= top;
+    }
+
+    List<float> GetComplimentaryHues()
+    {
+        List<float> complimentaryHues = new List<float>();
+        float[] existingHues = new float[2];
+
+        for (int i = 0; i < existingHues.Length; i++)
+        {
+            Transform currMark = otherMarkers[i].transform;
+            float hue = ((currMark.position.x - screenCenter.x) - left) / (right - left);
+            existingHues[i] = hue;
+        }
+
+        float diff = GetHueDifference(existingHues[0], existingHues[1]);
+        complimentaryHues.Add(existingHues[0]); //monochromatic
+        complimentaryHues.Add(existingHues[1]); //monochromatic
+        complimentaryHues.Add(0.5f * (existingHues[0] + existingHues[1])); //analogous
+        complimentaryHues.Add((complimentaryHues[2] + 0.5f) % 1); //analogous
+
+        if (diff != 0.5f) //accented analogous
+        {
+            float max;
+            float min;
+            if (Mathf.Abs(existingHues[0] - existingHues[1]) < 0.5f) //shortest distance doesn't need to wrap around color wheel
+            {
+                max = Mathf.Max(existingHues[0], existingHues[1]);
+                min = Mathf.Min(existingHues[0], existingHues[1]);
+            }
+            else //shortest distance requires passing around hue = 0 and hue = 1
+            {
+                max = Mathf.Min(existingHues[0], existingHues[1]);
+                min = Mathf.Max(existingHues[0], existingHues[1]);
+            }
+            complimentaryHues.Add((max + diff) % 1);
+            complimentaryHues.Add((min - diff) % 1);
+        }
+
+        return complimentaryHues;
+    }
+
+    float GetHueDifference(float h1, float h2)
+    {
+        float diff = Mathf.Abs(h1 - h2);
+        if (diff > 0.5f)
+            return (1 - diff) % 1;
+        else
+            return diff % 1;
+    }
+
+    List<float> GetComplimentaryLums()
+    {
+        List<float> complimentaryLums = new List<float>();
+        float[] otherLums = new float[2];
+
+        for (int i = 0; i < otherLums.Length; i++)
+        {
+            Transform currMark = otherMarkers[i].transform;
+            float lum = ((currMark.position.y - screenCenter.y) - bottom) / (top - bottom);
+            otherLums[i] = lum;
+        }
+
+        float diff = Mathf.Abs(otherLums[0] - otherLums[1]);
+        complimentaryLums.Add(otherLums[0]);
+        complimentaryLums.Add(otherLums[1]);
+        complimentaryLums.Add(0.5f * (otherLums[0] + otherLums[1]));
+        float highLum = Mathf.Max(otherLums[0], otherLums[1]) + diff;
+        if (highLum <= 1)
+            complimentaryLums.Add(highLum);
+        float lowLum = Mathf.Min(otherLums[0], otherLums[1]) - diff;
+        if (lowLum >= 0)
+            complimentaryLums.Add(lowLum);
+
+        return complimentaryLums;
     }
 
     bool ShouldCloseUI(Vector2 pos)
@@ -478,12 +708,5 @@ public class ColorPickFeedback : MonoBehaviour
         }
         markerRT.gameObject.SetActive(false);
         gameObject.SetActive(false);
-    }
-
-    private void OnDestroy()
-    {
-        PlayerPrefs.SetFloat('r' + affectedColor, mainFilter.GetColor(affectedColor).r);
-        PlayerPrefs.SetFloat('g' + affectedColor, mainFilter.GetColor(affectedColor).g);
-        PlayerPrefs.SetFloat('b' + affectedColor, mainFilter.GetColor(affectedColor).b);
     }
 }
