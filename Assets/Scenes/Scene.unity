@@ -693,6 +693,9 @@ MonoBehaviour:
   otherMarkers:
   - {fileID: 1294827983}
   - {fileID: 810471928}
+  otherSliders:
+  - {fileID: 1244774821}
+  - {fileID: 1051769249}
   mainFilter: {fileID: 2100000, guid: bfdd53480c71d734dbaaa19ba26a59bf, type: 2}
   affectedColor: _Color1
   snapDist: 0.05
@@ -990,7 +993,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.47922975, g: 0.47471362, b: 0, a: 1}
+  m_Color: {r: 0.20444381, g: 0, b: 0.10071515, a: 1}
   m_RaycastTarget: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
@@ -1421,7 +1424,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.7024935, g: 0.092637904, b: 0, a: 1}
+  m_Color: {r: 0.11904266, g: 0.8914085, b: 0, a: 1}
   m_RaycastTarget: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
@@ -2025,6 +2028,9 @@ MonoBehaviour:
   otherMarkers:
   - {fileID: 730757740}
   - {fileID: 1294827983}
+  otherSliders:
+  - {fileID: 1051769249}
+  - {fileID: 934279139}
   mainFilter: {fileID: 2100000, guid: bfdd53480c71d734dbaaa19ba26a59bf, type: 2}
   affectedColor: _Color3
   snapDist: 0.05
@@ -2495,7 +2501,7 @@ GameObject:
   - component: {fileID: 934279138}
   - component: {fileID: 934279139}
   m_Layer: 5
-  m_Name: Slider
+  m_Name: Slider Black
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2595,7 +2601,7 @@ GameObject:
   - component: {fileID: 1051769248}
   - component: {fileID: 1051769249}
   m_Layer: 5
-  m_Name: Slider
+  m_Name: Slider Gray
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3102,7 +3108,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.021464203, g: 0.2616908, b: 0, a: 1}
+  m_Color: {r: 0, g: 0.1715488, b: 0.5479261, a: 1}
   m_RaycastTarget: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
@@ -3136,7 +3142,7 @@ GameObject:
   - component: {fileID: 1244774820}
   - component: {fileID: 1244774821}
   m_Layer: 5
-  m_Name: Slider
+  m_Name: Slider White
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3992,6 +3998,9 @@ MonoBehaviour:
   otherMarkers:
   - {fileID: 730757740}
   - {fileID: 810471928}
+  otherSliders:
+  - {fileID: 1244774821}
+  - {fileID: 934279139}
   mainFilter: {fileID: 2100000, guid: bfdd53480c71d734dbaaa19ba26a59bf, type: 2}
   affectedColor: _Color2
   snapDist: 0.05

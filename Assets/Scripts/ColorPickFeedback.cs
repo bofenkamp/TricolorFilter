@@ -24,7 +24,10 @@ public class ColorPickFeedback : MonoBehaviour
             m_sliderVal = value;
             SetAppearance();
             if (gameObject.activeSelf)
+            {
                 GetNewColor(markerRT.position - screenCenter);
+                TrySnapSlider();
+            }
         }
     }
     private float m_sliderVal;
@@ -33,9 +36,11 @@ public class ColorPickFeedback : MonoBehaviour
     private Transform canvas;
     private RectTransform rt;
     private RectTransform slider;
+    private Slider sliderFunct;
     [SerializeField] private GameObject[] colorButtons;
     [SerializeField] private RectTransform markerRT;
     [SerializeField] private GameObject[] otherMarkers;
+    [SerializeField] private Slider[] otherSliders;
     private Image markerImg;
 
     //filter
@@ -65,7 +70,8 @@ public class ColorPickFeedback : MonoBehaviour
         screenCenter = canvas.GetComponent<RectTransform>().sizeDelta / 2f;
         mat = GetComponent<Image>().material;
         slider = transform.GetChild(0).GetComponent<RectTransform>();
-        sliderVal = slider.GetComponent<Slider>().value;
+        sliderFunct = slider.GetComponent<Slider>();
+        sliderVal = sliderFunct.value;
         markerImg = markerRT.GetComponent<Image>();
         snapDist *= rt.sizeDelta.x;
     }
@@ -615,6 +621,13 @@ public class ColorPickFeedback : MonoBehaviour
 
         float diff = GetHueDifference(existingHues[0], existingHues[1]);
         complimentaryHues.Add(existingHues[0]); //monochromatic
+
+        if (diff == 0)
+        {
+            complimentaryHues.Add((existingHues[0] + 0.5f) % 1); //complimentary
+            return complimentaryHues;
+        }
+
         complimentaryHues.Add(existingHues[1]); //monochromatic
         complimentaryHues.Add(0.5f * (existingHues[0] + existingHues[1])); //analogous
         complimentaryHues.Add((complimentaryHues[2] + 0.5f) % 1); //analogous
@@ -663,6 +676,12 @@ public class ColorPickFeedback : MonoBehaviour
 
         float diff = Mathf.Abs(otherLums[0] - otherLums[1]);
         complimentaryLums.Add(otherLums[0]);
+
+        if (diff == 0)
+        { 
+            return complimentaryLums;
+        }
+
         complimentaryLums.Add(otherLums[1]);
         complimentaryLums.Add(0.5f * (otherLums[0] + otherLums[1]));
         float highLum = Mathf.Max(otherLums[0], otherLums[1]) + diff;
@@ -673,6 +692,92 @@ public class ColorPickFeedback : MonoBehaviour
             complimentaryLums.Add(lowLum);
 
         return complimentaryLums;
+    }
+
+    List<float> GetComplimentarySats()
+    {
+        List<float> complimentarySats = new List<float>();
+        float[] otherSats = new float[2];
+
+        for (int i = 0; i < otherSats.Length; i++)
+        {
+            otherSats[i] = otherSliders[i].value;
+        }
+
+        float diff = Mathf.Abs(otherSats[0] - otherSats[1]);
+        complimentarySats.Add(otherSats[0]);
+
+        if (diff == 0)
+        {
+            return complimentarySats;
+        }
+
+        complimentarySats.Add(otherSats[1]);
+        complimentarySats.Add(0.5f * (otherSats[0] + otherSats[1]));
+        float highSat = Mathf.Max(otherSats[0], otherSats[1]) + diff;
+        if (highSat <= 1)
+            complimentarySats.Add(highSat);
+        float lowSat = Mathf.Min(otherSats[0], otherSats[1]) - diff;
+        if (lowSat >= 0)
+            complimentarySats.Add(lowSat);
+
+        return complimentarySats;
+    }
+
+    void TrySnapSlider()
+    {
+        float defaultSat = GetDefaultSat();
+        List<float> complimentarySats = GetComplimentarySats();
+        List<float> eligibleSats = new List<float>();
+
+        foreach (float sat in complimentarySats)
+        {
+            if (Mathf.Abs(defaultSat - sat) <= snapDist / (right - left))
+                eligibleSats.Add(sat);
+        }
+
+        if (eligibleSats.Count > 0)
+        {
+            if (eligibleSats.Count == 1)
+                sliderFunct.value = eligibleSats[0];
+
+            float closestSatVal = eligibleSats[0];
+            float smallestDiff = Mathf.Abs(eligibleSats[0] - defaultSat);
+            for (int i = 1; i < eligibleSats.Count; i++)
+            {
+                float sat = eligibleSats[i];
+                float diff = Mathf.Abs(sat - defaultSat);
+                if (diff < smallestDiff)
+                {
+                    closestSatVal = sat;
+                    smallestDiff = diff;
+                }
+            }
+
+            if (smallestDiff >= 0.00390625f) // 1/256, already at desired snap
+                sliderFunct.value = closestSatVal;
+        }
+        else
+        {
+            sliderFunct.value = defaultSat;
+        }
+    }
+
+    float GetDefaultSat()
+    {
+        float yVal;
+
+#if (UNITY_STANDALONE || UNITY_EDITOR)
+
+        yVal = Mathf.Clamp(((Input.mousePosition.y - screenCenter.y) - bottom) / (top - bottom), 0, 1);
+
+#elif (UNITY_IOS || UNITY_ANDROID)
+
+        yVal = Mathf.Clamp(((Input.touches[0].position.y - screenCenter.y) - bottom) / (top - bottom), 0, 1);
+
+#endif
+
+        return yVal;
     }
 
     bool ShouldCloseUI(Vector2 pos)
