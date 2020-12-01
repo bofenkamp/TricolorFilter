@@ -29,6 +29,8 @@ public class UIResize : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        SetColors();
+
         canvas = GetComponent<RectTransform>();
         margin *= Mathf.Min(canvas.sizeDelta.x, canvas.sizeDelta.y);
         float colorPickerSize = Mathf.Min(canvas.sizeDelta.x, canvas.sizeDelta.y) * size;
@@ -47,6 +49,29 @@ public class UIResize : MonoBehaviour
         SetMarkerPositions(markerSize, colorPickerSize);
         SetCamFlipButtonSize(flipButtonLen, colorButtonHeight, colorPickerSize, out camBottom);
         SetHideAndShow(camBottom);
+    }
+
+    void SetColors()
+    {
+        if (!PlayerPrefs.HasKey("r_Color3"))
+            return;
+
+        Color color1 = new Color(
+            PlayerPrefs.GetFloat("r_Color1"),
+            PlayerPrefs.GetFloat("g_Color1"),
+            PlayerPrefs.GetFloat("b_Color1"));
+        Color color2 = new Color(
+            PlayerPrefs.GetFloat("r_Color2"),
+            PlayerPrefs.GetFloat("g_Color2"),
+            PlayerPrefs.GetFloat("b_Color2"));
+        Color color3 = new Color(
+            PlayerPrefs.GetFloat("r_Color3"),
+            PlayerPrefs.GetFloat("g_Color3"),
+            PlayerPrefs.GetFloat("b_Color3"));
+
+        filterMat.SetColor("_Color1", color1);
+        filterMat.SetColor("_Color2", color2);
+        filterMat.SetColor("_Color3", color3);
     }
 
     void SetColorPickerSize(float len)
@@ -128,5 +153,16 @@ public class UIResize : MonoBehaviour
     {
         hideButton.position = new Vector3(margin, camBottom - margin);
         showButton.position = new Vector3(margin, canvas.sizeDelta.y - margin);
+    }
+
+    private void OnDestroy() //record colors for next time
+    {
+        foreach (RectTransform rt in colorPickers)
+        {
+            string affectedColor = rt.GetComponent<ColorPickFeedback>().affectedColor;
+            PlayerPrefs.SetFloat('r' + affectedColor, filterMat.GetColor(affectedColor).r);
+            PlayerPrefs.SetFloat('g' + affectedColor, filterMat.GetColor(affectedColor).g);
+            PlayerPrefs.SetFloat('b' + affectedColor, filterMat.GetColor(affectedColor).b);
+        }
     }
 }

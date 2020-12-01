@@ -479,4 +479,11 @@ public class ColorPickFeedback : MonoBehaviour
         markerRT.gameObject.SetActive(false);
         gameObject.SetActive(false);
     }
+
+    private void OnDestroy()
+    {
+        PlayerPrefs.SetFloat('r' + affectedColor, mainFilter.GetColor(affectedColor).r);
+        PlayerPrefs.SetFloat('g' + affectedColor, mainFilter.GetColor(affectedColor).g);
+        PlayerPrefs.SetFloat('b' + affectedColor, mainFilter.GetColor(affectedColor).b);
+    }
 }
