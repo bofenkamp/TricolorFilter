@@ -5,6 +5,8 @@ using UnityEngine.UI;
 
 public class ColorPickFeedback : MonoBehaviour
 {
+    private bool initialized = false;
+
     //positioning/color of this object
     [SerializeField] private Vector3 screenCenter;
     [SerializeField] private float left;
@@ -21,7 +23,8 @@ public class ColorPickFeedback : MonoBehaviour
         {
             m_sliderVal = value;
             SetAppearance();
-            GetNewColor(markerRT.position - screenCenter);
+            if (gameObject.activeSelf)
+                GetNewColor(markerRT.position - screenCenter);
         }
     }
     private float m_sliderVal;
@@ -37,7 +40,7 @@ public class ColorPickFeedback : MonoBehaviour
 
     //filter
     [SerializeField] private Material mainFilter;
-    [SerializeField] private string affectedColor;
+    public string affectedColor;
     private float x;
     private float y;
 
@@ -45,9 +48,19 @@ public class ColorPickFeedback : MonoBehaviour
     private bool adjustingSlider = false;
     [SerializeField] private float snapDist;
 
-    void Start()
+    private void Start()
     {
-        canvas = transform.parent.parent;
+        if (!initialized)
+            Initialize();
+    }
+
+    void Initialize()
+    {
+        if (initialized)
+            return;
+
+        initialized = true;
+        canvas = GameObject.Find("Canvas").transform;
         rt = GetComponent<RectTransform>();
         screenCenter = canvas.GetComponent<RectTransform>().sizeDelta / 2f;
         mat = GetComponent<Image>().material;
@@ -65,6 +78,8 @@ public class ColorPickFeedback : MonoBehaviour
 
     void SetAppearance()
     {
+        if (!initialized)
+            Initialize();
         Vector2 size = rt.sizeDelta;
         Vector2 anchor = 0.5f * (rt.anchorMax + rt.anchorMin);
         rt.anchorMax = anchor;
@@ -200,14 +215,14 @@ public class ColorPickFeedback : MonoBehaviour
         List<Vector3> eligibleSnaps = new List<Vector3>();
         foreach (GameObject obj in otherMarkers)
         {
-            newPos = TrySnapToPosition(obj.transform.position, markerRT.transform.position);
+            newPos = TrySnapToPosition(obj.transform.position, defaultPos);
             if (newPos.HasValue)
                 eligibleSnaps.Add(newPos.Value);
         }
 
         if (eligibleSnaps.Count > 1)
         {
-            markerRT.position = GetClosestPosition(eligibleSnaps, markerRT.transform.position);
+            markerRT.position = GetClosestPosition(eligibleSnaps, defaultPos);
             return;
         }
         else if (eligibleSnaps.Count == 1)
@@ -223,8 +238,12 @@ public class ColorPickFeedback : MonoBehaviour
         {
             for (int j = i + i; j < otherMarkers.Length; j++)
             {
-                newLine = TrySnapToLine(markerRT.transform.position, 
+                newLine = TrySnapToLine(defaultPos, 
                     otherMarkers[i].transform.position, otherMarkers[j].transform.position);
+                if (newLine.HasValue)
+                {
+                    eligibleLines.Add(newLine.Value);
+                }
             }
         }
 
@@ -233,13 +252,13 @@ public class ColorPickFeedback : MonoBehaviour
             (Vector3, Vector3) closestLine;
             if (eligibleLines.Count > 1)
             {
-                closestLine = GetClosestLine(eligibleLines, markerRT.transform.position);
+                closestLine = GetClosestLine(eligibleLines, defaultPos);
             }
             else
             {
                 closestLine = eligibleLines[0];
             }
-            markerRT.position = GetClosestPointOnLine(markerRT.transform.position, closestLine.Item1, closestLine.Item2);
+            markerRT.position = GetClosestPointOnLine(defaultPos, closestLine.Item1, closestLine.Item2);
             return;
         }
 
@@ -273,7 +292,8 @@ public class ColorPickFeedback : MonoBehaviour
 
     (Vector3, Vector3)? TrySnapToLine(Vector3 p0, Vector3 p1, Vector3 p2)
     {
-        float dist = GetDistFromLine(p0, p1, p2);
+        Vector3 closestPointOnLine = GetClosestPointOnLine(p0, p1, p2);
+        float dist = Vector2.Distance(closestPointOnLine, p0);
         if (dist <= snapDist)
             return (p1, p2);
         else
@@ -282,24 +302,29 @@ public class ColorPickFeedback : MonoBehaviour
 
     float GetDistFromLine(Vector3 p0, Vector3 p1, Vector3 p2)
     {
+        float d;
         if (p1.x == p2.x && p1.y == p2.y)
         {
-            return Vector2.Distance(new Vector2(p0.x, p0.y), new Vector2(p1.x, p1.y));
+            d = Vector2.Distance(new Vector2(p0.x, p0.y), new Vector2(p1.x, p1.y));
         }
         else if (p1.x == p2.x)
         {
-            return Mathf.Abs(p0.x - p1.x);
+            d = Mathf.Abs(p0.x - p1.x);
         }
         else if (p1.y == p2.y)
         {
-            return Mathf.Abs(p0.y - p1.y);
+            d = Mathf.Abs(p0.y - p1.y);
         }
         else
         {
+            //Debug.Log($"GETTING LINE DIST: p0 = {p0}, line = {p1} -> {p2}");
             float num = Mathf.Abs((p2.y - p1.y) * p0.x - (p2.x - p1.x) * p0.y + p2.x * p1.y - p2.y * p1.x);
             float den = Mathf.Sqrt(Mathf.Pow(p2.y - p1.y, 2) + Mathf.Pow(p2.x - p1.x, 2));
-            return num / den;
+            //Debug.Log($"d = {num / den}");
+            d = num / den;
         }
+        Debug.Log(p0 - screenCenter);
+        return d;
     }
 
     (Vector3, Vector3) GetClosestLine(List<(Vector3, Vector3)> lines, Vector3 pos)
@@ -320,22 +345,23 @@ public class ColorPickFeedback : MonoBehaviour
 
     Vector3 GetClosestPointOnLine(Vector3 p0, Vector3 p1, Vector3 p2)
     {
+        Vector3 p;
         if (p1.x == p2.x)
         {
             if (p1.y == p2.y) //p1 & p2 identical
             {
-                return p1;
+                p = p1;
             }
             else //horizontal line
             {
-                return new Vector3(p0.x, p1.y, 0);
+                p = new Vector3(p0.x, p1.y, 0);
             }
         }
         else
         {
             if (p1.y == p2.y) //vertical line
             {
-                return new Vector3(p1.x, p0.y, 0);
+                p = new Vector3(p1.x, p0.y, 0);
             }
             else //diagonal line
             {
@@ -345,9 +371,78 @@ public class ColorPickFeedback : MonoBehaviour
                 float c = p0.y - n * p0.x;
                 float x = (c - b) / (m - n);
                 float y = m * x + b;
-                return new Vector3(x, y, 0);
+                p = new Vector3(x, y, 0);
             }
         }
+        if (IsPointWithinBox(p))
+            return p;
+        else
+            return GetClosestPointWithinBox(p, p1, p2);
+    }
+
+    Vector3 GetClosestPointWithinBox(Vector3 p0, Vector3 p1, Vector3 p2)
+    {
+        Vector3 p;
+        Debug.Log($"{p0} not within box");
+        if (p0.x - screenCenter.x < left) //too far left
+        {
+            Debug.Log("point too far left");
+            p = GetPointOnLineWithXValue(left + screenCenter.x + 1, p1, p2);
+            Debug.Log($"readjusted to {p}");
+            if (IsPointWithinBox(p))
+                return p;
+        }
+        else if (p0.x - screenCenter.x > right) //too far right
+        {
+            Debug.Log("point too far right");
+            p = GetPointOnLineWithXValue(right + screenCenter.x - 1, p1, p2);
+            Debug.Log($"readjusted to {p}");
+            if (IsPointWithinBox(p))
+                return p;
+        }
+        if (p0.y - screenCenter.y < bottom) //too far down
+        {
+            Debug.Log("point too far down");
+            p = GetPointOnLineWithYValue(bottom + screenCenter.y + 1, p1, p2);
+            Debug.Log($"readjusted to {p}");
+            if (IsPointWithinBox(p))
+                return p;
+        }
+        else if (p0.y - screenCenter.y > top) //too far up
+        { 
+            Debug.Log("point too far up");
+            p = GetPointOnLineWithYValue(top + screenCenter.y - 1, p1, p2);
+            Debug.Log($"readjusted to {p}");
+            if (IsPointWithinBox(p))
+                return p;
+        }
+        if(!IsPointWithinBox(p0))
+        {
+            Debug.Log($"Point {p0} still not in box");
+        }
+        return p0;
+    }
+
+    Vector3 GetPointOnLineWithXValue(float x, Vector3 p1, Vector3 p2)
+    {
+        float m = (p2.y - p1.y) / (p2.x - p1.x);
+        float b = p1.y - m * p1.x;
+        float y = m * x + b;
+        return new Vector3(x, y, 0);
+    }
+
+    Vector3 GetPointOnLineWithYValue(float y, Vector3 p1, Vector3 p2)
+    {
+        float m = (p2.y - p1.y) / (p2.x - p1.x);
+        float b = p1.y - m * p1.x;
+        float x = (y - b) / m;
+        return new Vector3(x, y, 0);
+    }
+
+    bool IsPointWithinBox(Vector3 p) //takes in world coordinates, not shader coordinates
+    {
+        p -= screenCenter;
+        return left <= p.x && p.x <= right && bottom <= p.y && p.y <= top;
     }
 
     bool ShouldCloseUI(Vector2 pos)

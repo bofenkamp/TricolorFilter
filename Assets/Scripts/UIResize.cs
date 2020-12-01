@@ -64,6 +64,13 @@ public class UIResize : MonoBehaviour
         {
             rt.sizeDelta = new Vector2(w, h);
             rt.localPosition = new Vector3(x, -h/2f, 0);
+            Slider slider = rt.GetComponent<Slider>();
+            ColorPickFeedback colorPick = rt.transform.parent.GetComponent<ColorPickFeedback>();
+            float hue;
+            float sat;
+            float lum;
+            Color.RGBToHSV(filterMat.GetColor(colorPick.affectedColor), out hue, out sat, out lum);
+            slider.value = sat;
         }
     }
 
